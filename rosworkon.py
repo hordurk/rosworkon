@@ -43,7 +43,7 @@ def validate_workspace(workspace,root):
   # check if this is a workspace
   # should have a devel dir, src dir
   # devel dir should have a setup.bash
-  for f in (".catkin_workspace",".catkin_tools"):
+  for f in (".catkin_workspace",".catkin_tools","devel/setup.bash"):
     if os.path.exists(os.path.join(root, workspace, ".catkin_workspace")):
       return True
   return False
