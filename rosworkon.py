@@ -115,6 +115,7 @@ def init():
 def print_options():
   echo("--init")
   echo("--deactivate")
+  echo("--install-deps")
 
 def print_current_workspace():
   echo("Current workspace: %s (%s)" % (get_current_workspace(),get_current_workspace_dir()))
