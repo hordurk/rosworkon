@@ -1,5 +1,7 @@
 import sys
 import os
+import pickle
+import base64
 
 INIT_FILE_NAME = "workspace.init"
 FUNCTIONS = ['deactivate','_rosws_install_deps','rosws','catkin','catkin_make']
@@ -23,7 +25,10 @@ def active():
 
 def get_current_workspace():
   if active():
-    return os.environ["ROS_WORKON_WORKSPACE"]
+    try:
+      return os.environ["ROS_WORKON_WORKSPACE"]
+    except:
+      return None
   return None
 
 def get_current_workspace_dir():
@@ -39,6 +44,28 @@ def print_workspaces(root):
   for ws in get_workspaces(root):
     echo(ws)
 
+def clean_env(workspace, old_env):
+  for k,v in os.environ.items():
+    if k in old_env['edit']:
+      export(k, old_env['edit'][k])
+#      echo("Update: %s=%s" % (k, old_env['edit'][k]))
+    elif k in old_env['add']:
+      unset(k)
+#      echo("Unset: %s" % k)
+#    if k in old_env and old_env[k] != v:
+#      if k.startswith("ROS_") or k=="PWD" or k=="OLDPWD":
+#        continue
+#      export(k, old_env[k])      
+#      echo("%s: %s,%s" % (k,v,old_env[k]))
+#    parts = v.split(':')
+#    re_export = False
+#    for i in parts:
+#      if i.find(workspace) >= 0:
+#        parts.remove(i)
+#        re_export = True
+#    if re_export:
+#      export(k,':'.join(parts))
+
 def validate_workspace(workspace,root):
   # check if this is a workspace
   # should have a devel dir, src dir
@@ -49,7 +76,23 @@ def validate_workspace(workspace,root):
   return False
 
 def activate_workspace(workspace,root):
+  reloading = False
+  if get_current_workspace()==workspace:
+    reloading = True
+  elif get_current_workspace() is not None:
+    print "rosworkon --deactivate"
+    print "rosworkon %s" % workspace
+    return
+
   if validate_workspace(workspace,root=root):
+    if not reloading:
+      echo("Activating ROS workspace: %s" % workspace)
+    else:
+      echo("Reloading ROS workspace: %s" % workspace)
+
+    if not reloading:
+      export("ROS_WORKON_ENV", base64.b64encode(pickle.dumps(os.environ)))
+
     source(os.path.join(root, workspace, "devel", "setup.bash"))
 
     # Source the workspace's init file if it exists
@@ -57,8 +100,8 @@ def activate_workspace(workspace,root):
     if os.path.exists(initfile):
       source(initfile)
 
-    print "export ROS_WORKSPACE=%s" % os.path.join(root,workspace)
-    print "export ROS_WORKON_WORKSPACE=%s" % workspace
+    export("ROS_WORKSPACE", os.path.join(root,workspace))
+    export("ROS_WORKON_WORKSPACE", workspace)
 
     print "catkin_make()"
     print "{"
@@ -92,14 +135,46 @@ def activate_workspace(workspace,root):
     print "{"
     print "rosworkon --deactivate"
     print "}"
+
+    if not reloading:
+      print "rosworkon --post-activate"
+
   else:
     echo("Invalid workspace: %s" % workspace)
 
+def post_activate():
+  try:
+    old_env = pickle.loads(base64.b64decode(os.environ["ROS_WORKON_ENV"]))
+  except:
+    old_env = {}
+  new_env = os.environ
+  changes = {'edit':{},'add':[]}
+  for k,v in new_env.items():
+    if k.startswith("ROS_WORKON"):
+      continue
+    if k not in old_env:
+      changes['add'].append(k)
+    elif old_env[k]!=v:
+      changes['edit'][k] = old_env[k]
+  export("ROS_WORKON_ENV", base64.b64encode(pickle.dumps(changes)))
+
+
 def deactivate():
+  if get_current_workspace is not None:
+    echo("Deactivating ROS workspace: %s" % get_current_workspace())
+
+  try:
+    env_changes = pickle.loads(base64.b64decode(os.environ["ROS_WORKON_ENV"]))
+  except:
+    env_changes = {'edit':{},'add':[]}
+
+  ws = get_current_workspace_dir()
   for v in os.environ.keys():
     if v.startswith("ROS_") and v != "ROS_WORKON_ROOT":
       unset(v)
   unset("ROSLISP_PACKAGE_DIRECTORIES")
+  if ws:
+    clean_env(ws,env_changes)
   for f in FUNCTIONS:
     print "unset -f %s" % f
 
@@ -118,7 +193,7 @@ def print_options():
   echo("--install-deps")
 
 def print_current_workspace():
-  echo("Current workspace: %s (%s)" % (get_current_workspace(),get_current_workspace_dir()))
+  echo("Current ROS workspace: %s (%s)" % (get_current_workspace(),get_current_workspace_dir()))
 
 def main():
   if not "ROS_WORKON_ROOT" in os.environ:
@@ -141,6 +216,8 @@ def main():
       print_workspaces(root=WORKSPACES_ROOT)
       if len(sys.argv) > 2 and sys.argv[2][0] == '-':
         print_options()
+    elif(sys.argv[1]=="--post-activate"):
+      post_activate()
     elif(sys.argv[1]=="--init"):
       init()
     else:
