@@ -4,7 +4,7 @@ import pickle
 import base64
 
 INIT_FILE_NAME = "workspace.init"
-FUNCTIONS = ['deactivate','_rosws_install_deps','rosws','catkin','catkin_make']
+FUNCTIONS = ['deactivate','_rosws_install_deps','rosws','catkin_make']
 
 
 def echo(args):
@@ -109,17 +109,17 @@ def activate_workspace(workspace,root):
     print "  (cd $ROS_WORKSPACE ; $CATKIN_MAKE \"$@\")"
     print "}"
 
-    print "catkin()"
-    print "{"
-    print " CATKIN=`which catkin`"
-    print " if [ \"$1\" == \"list\" ]; then"
-    print "   ( $CATKIN \"$@\" )"
-    print " else"
-    print "   VERB=\"$1\""
-    print "   shift"
-    print "   $CATKIN $VERB -w $ROS_WORKSPACE \"$@\""
-    print " fi"
-    print "}"
+#    print "catkin()"
+#    print "{"
+#    print " CATKIN=`which catkin`"
+#    print " if [ \"$1\" == \"list\" ]; then"
+#    print "   ( $CATKIN \"$@\" )"
+#    print " else"
+#    print "   VERB=\"$1\""
+#    print "   shift"
+#    print "   $CATKIN $VERB -w $ROS_WORKSPACE \"$@\""
+#    print " fi"
+#    print "}"
 
     print "_rosworkon_install_deps()"
     print "{"
@@ -135,6 +135,8 @@ def activate_workspace(workspace,root):
     print "{"
     print "rosworkon --deactivate"
     print "}"
+
+    print "echo \"ba: build --workspace \$ROS_WORKSPACE\nla: list --workspace \$ROS_WORKSPACE\n\" > ~/.config/catkin/verb_aliases/10-rosworkon.yaml"
 
     if not reloading:
       print "rosworkon --post-activate"
