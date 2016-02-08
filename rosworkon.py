@@ -8,7 +8,9 @@ FUNCTIONS = ['deactivate','_rosws_install_deps','rosws','catkin_make']
 
 
 def echo(args):
-  print "if shopt -q login_shell; then"
+#  print "if shopt -q login_shell; then"
+
+  print "if [[ $- == *i* ]]; then"
   print "echo \""+args+"\""
   print "fi"
 
